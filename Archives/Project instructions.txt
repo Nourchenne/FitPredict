@@ -1,0 +1,37 @@
+J'assure un Module Python pour data scicen 2. C'est 100% projet avec des cours à assurer un peu avancé telque l'ensembling le boosting, feature selection.... Les étudiants connaissent dejà le pipeline ML avec des algo classique comme KNN,Arbre de décision RF... Le projet sera guidé en classe et pour chaque étape je fournis un tuto à suive aux étudiants. Voilà comment ça se dérouler: (13 semaines). 
+
+L'objectif c'est d'organiser mon dossier et de préparer :
+
+-Les cours à senseigner dans dossier cours,
+-Le code dans un dossier code (github ready)
+-Les tuto (en latex .tex prets à compiler)
+-Un guide totale de projet qui fait références à tous les autres tutos et qui contient le déroulement du projet : les grandes lignes, le planning des délivrables...)
+
+ Projet Machine Learning :
+
+Objectif, travailler sur un dataset CSV avec un objectif fixé dès le début. 
+
+Choix du dataset: 
+
+*Dataset téléchargé directement
+— Kaggle : https://www.kaggle.com/datasets
+— Papers With Code : https://paperswithcode.com/datasets
+— Hugging Face Datasets : https://huggingface.co/datasets
+— Google Dataset Search : https://datasetsearch.research.google.com
+— UCI ML Repository : https://archive.ics.uci.edu/ml
+
+*Web Scraping
+-BeatufulSoup 
+-Selinium
+
+
+Pour un objectif pédagogique tout ce que je vais faire ça sera sur un dataset (de préférence téléchargeable telque breast cancer Wisconsin ou Adult...) et à chaque étape je vais générer le tuto latex correspondant à l'étape pour guider les étudiants.
+
+0-Etape 0 : Si je vais faire le scraping, comment je vais le faire, exemple sur site avec objectif fixé dès le début: Tuto scraping (scraping_tuto.tex + scraping.py)
+1-Etape 1 CHoix du dataset et objectifs + data exploration--> Tutorial comment faire data exploration et data Visualsiation (Exploration_tuot.tex, data_exploration.py)
+2-Modélisation et suivi des expériences avec MLFLOW--> Tuto nécessaire...)
+2-Pipline Machine learning : dès le nettoyage, Feature eng, Preprocessing, feature selection, modelisation, évaluation
+3-Backend et Endpoints avec FastAPI (tuto instalation, comment déployer le modèle les scripts à préparer, les installations.... comment faires les endpoints--> Propsez le tuto.tex nécessaire)
+4-Front avec react--> Tuto
+5-Déploiement avec Docker/Docker Compose--> tuto à suivre
+
