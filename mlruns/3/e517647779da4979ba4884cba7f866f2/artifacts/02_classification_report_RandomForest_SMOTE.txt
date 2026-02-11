@@ -1,0 +1,22 @@
+============================================================
+RAPPORT DE CLASSIFICATION - RandomForest_SMOTE
+============================================================
+
+Date: 2026-02-11 18:52:37
+Accuracy: 0.9385
+F1-Score (Macro): 0.9386
+
+============================================================
+                     precision    recall  f1-score   support
+
+Insufficient_Weight       1.00      0.94      0.97        54
+      Normal_Weight       0.77      0.91      0.83        58
+     Obesity_Type_I       0.96      0.96      0.96        70
+    Obesity_Type_II       1.00      0.98      0.99        60
+   Obesity_Type_III       1.00      0.98      0.99        65
+ Overweight_Level_I       0.89      0.84      0.87        58
+Overweight_Level_II       0.98      0.93      0.96        58
+
+           accuracy                           0.94       423
+          macro avg       0.94      0.94      0.94       423
+       weighted avg       0.94      0.94      0.94       423

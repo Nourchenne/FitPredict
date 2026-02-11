@@ -1,171 +1,288 @@
+import os
+import joblib
 import pandas as pd
-import numpy as np
 import mlflow
 import mlflow.sklearn
 import matplotlib.pyplot as plt
 import seaborn as sns
+from datetime import datetime
+
 from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.preprocessing import StandardScaler, OneHotEncoder, LabelEncoder
 from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import accuracy_score, f1_score, classification_report, confusion_matrix
+
 from imblearn.pipeline import Pipeline as ImbPipeline
 from imblearn.over_sampling import SMOTE
-from sklearn.ensemble import RandomForestClassifier, StackingClassifier
-from sklearn.linear_model import LogisticRegression
+
+from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
-from sklearn.metrics import accuracy_score, f1_score, classification_report, confusion_matrix, roc_curve, auc
-import joblib
-import os
+from lightgbm import LGBMClassifier
 
-# Set MLflow experiment name
-EXPERIMENT_NAME = "Bank_Churn_Optimized"
 
-def prepare_data(file_path="data/bank_churn.csv"):
+EXPERIMENT_NAME = "Obesity_Optimized"
+RAW_PATH = "data/raw/ObesityDataSet_raw_and_data_sinthetic.csv"
+TARGET_COL = "NObeyesdad"
+
+# Create timestamped directories for better organization
+TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
+BASE_REPORTS_DIR = "reports/model_comparison"
+ARTIFACT_DIR = os.path.join(BASE_REPORTS_DIR, f"run_{TIMESTAMP}")
+MODELS_DIR = "models"
+BEST_MODEL_PATH = os.path.join(MODELS_DIR, f"best_model_{TIMESTAMP}.pkl")
+
+
+def prepare_data(file_path=RAW_PATH):
     df = pd.read_csv(file_path)
-    X = df.drop(['RowNumber', 'CustomerId', 'Surname', 'Exited'], axis=1)
-    y = df['Exited']
-    
-    categorical_features = ['Geography', 'Gender']
-    numerical_features = ['CreditScore', 'Age', 'Tenure', 'Balance', 'NumOfProducts', 'HasCrCard', 'IsActiveMember', 'EstimatedSalary']
-    
+
+    if TARGET_COL not in df.columns:
+        raise ValueError(f"Target '{TARGET_COL}' not found. Columns: {list(df.columns)}")
+
+    X = df.drop(columns=[TARGET_COL])
+    y = df[TARGET_COL]
+
+    # detect columns
+    categorical_features = X.select_dtypes(include=["object", "bool"]).columns.tolist()
+    numerical_features = X.select_dtypes(include=["int64", "float64", "int32", "float32"]).columns.tolist()
+
     preprocessor = ColumnTransformer(
         transformers=[
-            ('num', StandardScaler(), numerical_features),
-            ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_features)
-        ])
-    
-    return train_test_split(X, y, test_size=0.2, random_state=42, stratify=y), preprocessor
+            ("num", Pipeline(steps=[("scaler", StandardScaler())]), numerical_features),
+            ("cat", Pipeline(steps=[("onehot", OneHotEncoder(handle_unknown="ignore"))]), categorical_features),
+        ],
+        remainder="drop"
+    )
 
-def plot_confusion_matrix(y_true, y_pred, model_name):
+    # encode target
+    le = LabelEncoder()
+    y_enc = le.fit_transform(y)
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y_enc, test_size=0.2, random_state=42, stratify=y_enc
+    )
+
+    return (X_train, X_test, y_train, y_test), preprocessor, le
+
+
+def plot_confusion_matrix(y_true, y_pred, class_names, model_name):
     cm = confusion_matrix(y_true, y_pred)
-    plt.figure(figsize=(6, 5))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False)
-    plt.title(f'Confusion Matrix: {model_name}')
-    plt.ylabel('Actual')
-    plt.xlabel('Predicted')
+    plt.figure(figsize=(9, 7))
+    sns.heatmap(cm, annot=True, fmt='d', cmap="Blues", cbar=True)
+    plt.title(f"Matrice de Confusion - {model_name}", fontsize=14, fontweight='bold')
+    plt.ylabel("Classe Réelle", fontsize=12)
+    plt.xlabel("Classe Prédite", fontsize=12)
     plt.tight_layout()
-    filename = f"data/confusion_matrix_{model_name}.png"
-    plt.savefig(filename)
+
+    os.makedirs(ARTIFACT_DIR, exist_ok=True)
+    filename = os.path.join(ARTIFACT_DIR, f"01_confusion_matrix_{model_name}.png")
+    plt.savefig(filename, dpi=200, bbox_inches='tight')
     plt.close()
     return filename
 
-def plot_roc_curve(y_true, y_prob, model_name):
-    fpr, tpr, _ = roc_curve(y_true, y_prob)
-    roc_auc = auc(fpr, tpr)
-    plt.figure(figsize=(6, 5))
-    plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
-    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title(f'ROC Curve: {model_name}')
-    plt.legend(loc="lower right")
-    filename = f"data/roc_curve_{model_name}.png"
-    plt.savefig(filename)
-    plt.close()
-    return filename
 
-def run_optimized_experiment(model_name, model, param_grid):
-    (X_train, X_test, y_train, y_test), preprocessor = prepare_data()
+def plot_models_comparison(results_df):
+    """Create comparison plots for all models"""
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
     
+    # Plot 1: Accuracy comparison
+    axes[0].bar(results_df['Model'], results_df['Accuracy'], color='skyblue', edgecolor='navy')
+    axes[0].set_title('Comparaison de l\'Accuracy', fontsize=14, fontweight='bold')
+    axes[0].set_ylabel('Accuracy', fontsize=12)
+    axes[0].set_xlabel('Modèle', fontsize=12)
+    axes[0].set_ylim([0, 1.0])
+    axes[0].tick_params(axis='x', rotation=45)
+    for i, v in enumerate(results_df['Accuracy']):
+        axes[0].text(i, v + 0.02, f'{v:.4f}', ha='center', va='bottom', fontweight='bold')
+    
+    # Plot 2: F1-Score comparison
+    axes[1].bar(results_df['Model'], results_df['F1_Macro'], color='lightcoral', edgecolor='darkred')
+    axes[1].set_title('Comparaison du F1-Score (Macro)', fontsize=14, fontweight='bold')
+    axes[1].set_ylabel('F1-Score', fontsize=12)
+    axes[1].set_xlabel('Modèle', fontsize=12)
+    axes[1].set_ylim([0, 1.0])
+    axes[1].tick_params(axis='x', rotation=45)
+    for i, v in enumerate(results_df['F1_Macro']):
+        axes[1].text(i, v + 0.02, f'{v:.4f}', ha='center', va='bottom', fontweight='bold')
+    
+    plt.tight_layout()
+    filename = os.path.join(ARTIFACT_DIR, '00_MODELS_COMPARISON.png')
+    plt.savefig(filename, dpi=200, bbox_inches='tight')
+    plt.close()
+    return filename
+
+
+def run_experiment(model_name, model, param_grid, use_smote=True):
+    (X_train, X_test, y_train, y_test), preprocessor, label_encoder = prepare_data()
+
     mlflow.set_experiment(EXPERIMENT_NAME)
-    
-    with mlflow.start_run(run_name=model_name):
-        # Custom handling for Stacking
-        if model == "STACKING_PLACEHOLDER":
-            base_learners = [
-                ('rf', RandomForestClassifier(n_estimators=100, max_depth=10, random_state=42)),
-                ('xgb', XGBClassifier(n_estimators=100, max_depth=3, use_label_encoder=False, eval_metric='logloss', random_state=42))
-            ]
-            model = StackingClassifier(
-                estimators=base_learners,
-                final_estimator=LogisticRegression(),
-                cv=5
-            )
 
-        # Build Imbalanced Pipeline (SMOTE happens only during fit)
-        pipeline = ImbPipeline(steps=[
-            ('preprocessor', preprocessor),
-            ('smote', SMOTE(random_state=42)),
-            ('classifier', model)
-        ])
-        
-        # Grid Search
-        # Note: parameters should be prefixed with 'classifier__'
-        grid_search = GridSearchCV(pipeline, param_grid, cv=3, scoring='f1', verbose=1, n_jobs=-1)
-        grid_search.fit(X_train, y_train)
-        
-        best_model = grid_search.best_estimator_
-        best_params = grid_search.best_params_
-        
-        # Log Best Parameters
+    with mlflow.start_run(run_name=model_name):
+        os.makedirs(ARTIFACT_DIR, exist_ok=True)
+
+        # Build Pipeline (SMOTE only during fit)
+        if use_smote:
+            pipeline = ImbPipeline(steps=[
+                ("preprocessor", preprocessor),
+                ("smote", SMOTE(random_state=42)),
+                ("classifier", model),
+            ])
+        else:
+            pipeline = Pipeline(steps=[
+                ("preprocessor", preprocessor),
+                ("classifier", model),
+            ])
+
+        grid = GridSearchCV(
+            pipeline,
+            param_grid=param_grid,
+            cv=3,
+            scoring="f1_macro", 
+            verbose=1,
+            n_jobs=-1
+        )
+
+        grid.fit(X_train, y_train)
+
+        best_model = grid.best_estimator_
+        best_params = grid.best_params_
+
         mlflow.log_params(best_params)
-        
+
         # Predictions
         y_pred = best_model.predict(X_test)
-        y_prob = best_model.predict_proba(X_test)[:, 1] if hasattr(best_model, "predict_proba") else None
-        
+
         # Metrics
         acc = accuracy_score(y_test, y_pred)
-        f1 = f1_score(y_test, y_pred)
-        
+        f1m = f1_score(y_test, y_pred, average="macro")
+
         mlflow.log_metric("accuracy", acc)
-        mlflow.log_metric("f1_score", f1)
-        
-        print(f"[{model_name}] Best Params: {best_params}")
-        print(f"[{model_name}] Accuracy: {acc:.4f}, F1: {f1:.4f}")
-        
-        # Plots
-        cm_path = plot_confusion_matrix(y_test, y_pred, model_name)
+        mlflow.log_metric("f1_macro", f1m)
+
+        # Report
+        class_names = list(label_encoder.classes_)
+        report = classification_report(y_test, y_pred, target_names=class_names)
+        report_path = os.path.join(ARTIFACT_DIR, f"02_classification_report_{model_name}.txt")
+        with open(report_path, "w", encoding="utf-8") as f:
+            f.write(f"="*60 + "\n")
+            f.write(f"RAPPORT DE CLASSIFICATION - {model_name}\n")
+            f.write(f"="*60 + "\n\n")
+            f.write(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"Accuracy: {acc:.4f}\n")
+            f.write(f"F1-Score (Macro): {f1m:.4f}\n")
+            f.write("\n" + "="*60 + "\n")
+            f.write(report)
+        mlflow.log_artifact(report_path)
+
+        # Confusion matrix plot
+        cm_path = plot_confusion_matrix(y_test, y_pred, class_names, model_name)
         mlflow.log_artifact(cm_path)
-        
-        if y_prob is not None:
-            roc_path = plot_roc_curve(y_test, y_prob, model_name)
-            mlflow.log_artifact(roc_path)
-            
-        # Log Model
+
+        # Log model
         mlflow.sklearn.log_model(best_model, "model")
-        
-        return best_model, f1
+
+        print(f"\n[{model_name}] Best Params: {best_params}")
+        print(f"[{model_name}] Accuracy: {acc:.4f} | F1_macro: {f1m:.4f}")
+
+        return best_model, {"accuracy": acc, "f1_macro": f1m}
+
 
 if __name__ == "__main__":
-    # Define models and grids
     models_config = {
         "RandomForest_SMOTE": {
             "model": RandomForestClassifier(random_state=42),
             "params": {
-                'classifier__n_estimators': [100, 200],
-                'classifier__max_depth': [10, 20, None],
-                'classifier__min_samples_split': [2, 5]
+                "classifier__n_estimators": [200, 400],
+                "classifier__max_depth": [None, 20, 40],
+                "classifier__min_samples_split": [2, 5]
             }
         },
         "XGBoost_SMOTE": {
-            "model": XGBClassifier(use_label_encoder=False, eval_metric='logloss', random_state=42),
+            "model": XGBClassifier(
+                random_state=42,
+                eval_metric="mlogloss",
+                tree_method="hist"
+            ),
             "params": {
-                'classifier__learning_rate': [0.01, 0.1],
-                'classifier__n_estimators': [100, 200],
-                'classifier__max_depth': [3, 6]
+                "classifier__learning_rate": [0.05, 0.1],
+                "classifier__n_estimators": [300, 500],
+                "classifier__max_depth": [3, 6]
             }
         },
-        "Stacking_Ensemble": {
-            "model": "STACKING_PLACEHOLDER",  # Will handle in run_optimized_experiment
+        "LightGBM_SMOTE": {
+            "model": LGBMClassifier(
+                random_state=42,
+                verbose=-1,
+                force_col_wise=True
+            ),
             "params": {
-                'classifier__cv': [3, 5]
+                "classifier__learning_rate": [0.05, 0.1],
+                "classifier__n_estimators": [300, 500],
+                "classifier__max_depth": [3, 6, 10],
+                "classifier__num_leaves": [31, 50]
             }
         }
     }
-    
+
     best_overall_model = None
     best_overall_f1 = -1
-    
+    results = []
+
+    print("\n" + "="*70)
+    print("🚀 DÉMARRAGE DE L'ENTRAÎNEMENT DES MODÈLES")
+    print("="*70)
+
     for name, config in models_config.items():
-        print(f"\nRunning {name}...")
-        model, f1 = run_optimized_experiment(name, config["model"], config["params"])
-        if f1 > best_overall_f1:
-            best_overall_f1 = f1
+        print(f"\n{'='*70}")
+        print(f"📊 Entraînement: {name}")
+        print(f"{'='*70}")
+        model, metrics = run_experiment(name, config["model"], config["params"], use_smote=True)
+        
+        # Store results for comparison
+        results.append({
+            'Model': name,
+            'Accuracy': metrics['accuracy'],
+            'F1_Macro': metrics['f1_macro']
+        })
+        
+        if metrics['f1_macro'] > best_overall_f1:
+            best_overall_f1 = metrics['f1_macro']
             best_overall_model = model
-            
-    # Save best overall model
-    if best_overall_model:
-        joblib.dump(best_overall_model, "data/best_model_pipeline.pkl")
-        print(f"\nBest model saved: F1={best_overall_f1:.4f}")
+
+    # Create comparison report
+    print("\n" + "="*70)
+    print("📈 CRÉATION DU RAPPORT DE COMPARAISON")
+    print("="*70)
+    
+    results_df = pd.DataFrame(results)
+    results_df = results_df.sort_values('F1_Macro', ascending=False)
+    
+    # Save comparison table
+    comparison_file = os.path.join(ARTIFACT_DIR, '00_RESULTATS_COMPARAISON.csv')
+    results_df.to_csv(comparison_file, index=False, encoding='utf-8')
+    
+    # Create comparison plot
+    plot_models_comparison(results_df)
+    
+    # Print summary
+    print("\n" + "="*70)
+    print("📊 RÉSUMÉ DES PERFORMANCES")
+    print("="*70)
+    print(results_df.to_string(index=False))
+    print("="*70)
+
+    # Save best overall model pipeline
+    if best_overall_model is not None:
+        os.makedirs(MODELS_DIR, exist_ok=True)
+        joblib.dump(best_overall_model, BEST_MODEL_PATH)
+        
+        # Also save with a fixed name for easy access
+        latest_model_path = os.path.join(MODELS_DIR, "best_model_latest.pkl")
+        joblib.dump(best_overall_model, latest_model_path)
+        
+        print(f"\n✅ Meilleur modèle sauvegardé:")
+        print(f"   📁 Avec timestamp: {BEST_MODEL_PATH}")
+        print(f"   📁 Version latest: {latest_model_path}")
+        print(f"   🎯 F1-Score (Macro): {best_overall_f1:.4f}")
+        print(f"\n📊 Tous les rapports disponibles dans: {ARTIFACT_DIR}")
+        print("="*70)
