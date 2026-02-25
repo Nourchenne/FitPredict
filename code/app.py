@@ -5,42 +5,60 @@ import pandas as pd
 import joblib
 import io
 import os
+from typing import Optional, Dict, Any, List
 
-app = FastAPI(title="Obesity Level Prediction API")
+app = FastAPI(title="Obesity Level Prediction API", version="1.0.0")
 
-# Enable CORS (for Angular later)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # later you can restrict to your frontend domain
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Paths (adapted to your project)
-MODEL_PATH = "models/best_model_latest.pkl"
-LABEL_ENCODER_PATH = "data/processed/label_encoder.pkl"
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MODEL_PATH = os.path.join(BASE_DIR, "models", "best_model_latest.pkl")
+LABEL_ENCODER_PATH = os.path.join(BASE_DIR, "data", "processed", "label_encoder.pkl")
+
 
 model = None
 label_encoder = None
 
-# Load artifacts on startup
+# Colonnes attendues
+REQUIRED_COLS: List[str] = [
+    "Gender", "Age", "Height", "Weight",
+    "family_history_with_overweight", "FAVC", "FCVC", "NCP", "CAEC",
+    "SMOKE", "CH2O", "SCC", "FAF", "TUE", "CALC", "MTRANS"
+]
+
+
+# Load -
 @app.on_event("startup")
-def load_artifacts():
+def load_artifacts() -> None:
+    """
+    Charge le modèle ML (pipeline) et le label encoder au démarrage.
+    """
     global model, label_encoder
 
+    
     if os.path.exists(MODEL_PATH):
         model = joblib.load(MODEL_PATH)
     else:
         model = None
+        print(f"[WARN] Model not found at: {MODEL_PATH}")
 
+    # Charger label encoder
     if os.path.exists(LABEL_ENCODER_PATH):
         label_encoder = joblib.load(LABEL_ENCODER_PATH)
     else:
         label_encoder = None
+        print(f"[WARN] Label encoder not found at: {LABEL_ENCODER_PATH}")
 
 
-# ----------- Input schema (UCI Obesity dataset) -----------
+
 class ObesityData(BaseModel):
     Gender: str
     Age: float
@@ -60,92 +78,168 @@ class ObesityData(BaseModel):
     MTRANS: str
 
 
+
 @app.get("/health")
-def health_check():
+def health_check() -> Dict[str, Any]:
     """
-    Health check endpoint to ensure API is running and model is loaded.
+    Vérifie si l'API est up et si les artefacts sont chargés.
     """
     return {
         "status": "ok" if model else "degraded",
         "model_loaded": bool(model),
-        "label_encoder_loaded": bool(label_encoder)
+        "label_encoder_loaded": bool(label_encoder),
     }
+
+
+
+@app.get("/model_info")
+def model_info() -> Dict[str, Any]:
+    """
+    Retourne des infos utiles sur le modèle chargé.
+    """
+    if not model:
+        raise HTTPException(status_code=503, detail="Model not loaded")
+
+    info: Dict[str, Any] = {
+        "model_loaded": True,
+        "model_type": type(model).__name__,
+        "supports_predict_proba": hasattr(model, "predict_proba"),
+        "label_encoder_loaded": bool(label_encoder),
+        "required_columns": REQUIRED_COLS,
+        "model_path": MODEL_PATH,
+        "label_encoder_path": LABEL_ENCODER_PATH,
+    }
+
+    # Certains modèles sklearn exposent classes_
+    if hasattr(model, "classes_"):
+        try:
+            classes = list(model.classes_)
+            info["num_classes"] = len(classes)
+            info["classes"] = classes
+        except Exception:
+            pass
+
+    return info
+
 
 
 @app.post("/predict")
-def predict_obesity(data: ObesityData):
+def predict_obesity(data: ObesityData) -> Dict[str, Any]:
     """
-    Real-time prediction for a single person (multi-class).
+    Prédiction temps réel pour une seule personne.
     """
     if not model:
         raise HTTPException(status_code=503, detail="Model pipeline not available")
 
+    # Convertir l'entrée en DataFrame (1 ligne)
     input_df = pd.DataFrame([data.model_dump()])
 
-    # class id prediction (encoded)
+    # Vérifier que toutes les colonnes attendues sont là (sécurité)
+    missing = [c for c in REQUIRED_COLS if c not in input_df.columns]
+    if missing:
+        raise HTTPException(status_code=400, detail=f"Missing required fields: {missing}")
+
+    # Predire classe encodée (id)
     pred_id = int(model.predict(input_df)[0])
 
-    # Decode to original label if possible
     if label_encoder is not None:
-        pred_label = label_encoder.inverse_transform([pred_id])[0]
+        try:
+            pred_label = label_encoder.inverse_transform([pred_id])[0]
+        except Exception:
+            pred_label = str(pred_id)
     else:
         pred_label = str(pred_id)
 
-    # Probabilities (if available)
-    proba = None
+    proba: Optional[float] = None
     if hasattr(model, "predict_proba"):
         probs = model.predict_proba(input_df)[0]
-        proba = float(probs[pred_id])  # probability of predicted class
+
+        if hasattr(model, "classes_"):
+            class_list = list(model.classes_)
+            if pred_id in class_list:
+                idx = class_list.index(pred_id)
+                proba = float(probs[idx])
+            else:
+                if 0 <= pred_id < len(probs):
+                    proba = float(probs[pred_id])
+        else:
+            if 0 <= pred_id < len(probs):
+                proba = float(probs[pred_id])
 
     return {
-        "predicted_class": str(pred_label),
-        "predicted_class_id": pred_id,
-        "predicted_probability": proba
+        "prediction_id": pred_id,
+        "prediction_label": str(pred_label),
+        "probability": proba,
+        "status": "success",
     }
 
 
+
 @app.post("/predict_batch")
-async def predict_batch(file: UploadFile = File(...)):
+async def predict_batch(file: UploadFile = File(...)) -> List[Dict[str, Any]]:
     """
-    Batch prediction endpoint expecting a CSV file.
-    Returns the input CSV with 2 new columns:
+    Prédictions batch à partir d'un CSV.
+    Retourne une liste d'objets JSON (une ligne = un dict) avec:
     - Predicted_Class
-    - Predicted_Probability (optional)
+    - Predicted_Probability (si disponible)
     """
     if not model:
         raise HTTPException(status_code=503, detail="Model pipeline not available")
 
+    # Vérif type fichier (optionnel mais recommandé)
+    if file.content_type not in (None, "text/csv", "application/vnd.ms-excel"):
+        raise HTTPException(status_code=400, detail="Please upload a CSV file")
+
     try:
         content = await file.read()
+
+        # Lire CSV depuis mémoire
         df = pd.read_csv(io.BytesIO(content))
 
-        required_cols = [
-            "Gender", "Age", "Height", "Weight",
-            "family_history_with_overweight", "FAVC", "FCVC", "NCP", "CAEC",
-            "SMOKE", "CH2O", "SCC", "FAF", "TUE", "CALC", "MTRANS"
-        ]
-
-        missing = [c for c in required_cols if c not in df.columns]
+        # Vérifier colonnes requises
+        missing = [c for c in REQUIRED_COLS if c not in df.columns]
         if missing:
             raise HTTPException(
                 status_code=400,
                 detail=f"CSV missing required columns: {missing}"
             )
 
-        # Predict
-        pred_ids = model.predict(df).astype(int)
+        pred_ids = model.predict(df)
+
+        try:
+            pred_ids = pred_ids.astype(int)
+        except Exception:
+            pred_ids = pd.Series(pred_ids)
 
         if label_encoder is not None:
-            pred_labels = label_encoder.inverse_transform(pred_ids)
+            try:
+                pred_labels = label_encoder.inverse_transform(pred_ids)
+            except Exception:
+                pred_labels = pred_ids.astype(str)
         else:
             pred_labels = pred_ids.astype(str)
 
         df["Predicted_Class"] = pred_labels
 
-        # Probabilities (if available)
         if hasattr(model, "predict_proba"):
             probs = model.predict_proba(df)
-            df["Predicted_Probability"] = [float(probs[i, pred_ids[i]]) for i in range(len(pred_ids))]
+
+            if hasattr(model, "classes_"):
+                classes = list(model.classes_)
+                proba_list = []
+                for i in range(len(df)):
+                    pid = int(pred_ids[i])
+                    if pid in classes:
+                        idx = classes.index(pid)
+                        proba_list.append(float(probs[i][idx]))
+                    else:
+                        proba_list.append(None)
+                df["Predicted_Probability"] = proba_list
+            else:
+                df["Predicted_Probability"] = [
+                    float(probs[i, int(pred_ids[i])]) if 0 <= int(pred_ids[i]) < probs.shape[1] else None
+                    for i in range(len(df))
+                ]
         else:
             df["Predicted_Probability"] = None
 
@@ -155,6 +249,7 @@ async def predict_batch(file: UploadFile = File(...)):
         raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
 
 
 if __name__ == "__main__":

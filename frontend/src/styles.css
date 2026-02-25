@@ -1,0 +1,237 @@
+/* Global styles for the Angular app - Organic minimal handmade vibe */
+:root {
+  --heading-font: "Inter", "Segoe UI", sans-serif;
+
+  --primary-color: #6bb252;
+  --primary-light: #86c86a;
+  --primary-dark: #4a8f36;
+  --secondary-color: #364127;
+  --danger-color: #dc2626;
+  --warning-color: #f7a422;
+  --success-color: #a3be4c;
+
+  --background: #f7f8f3;
+  --surface: #ffffff;
+  --surface-light: #f1f4ea;
+  --border-color: #e8ecdf;
+  --text-primary: #2e3824;
+  --text-secondary: #57614d;
+  --text-muted: #7a846f;
+
+  --shadow-soft: 0 6px 18px -14px rgba(54, 65, 39, 0.32);
+  --shadow-hover: 0 10px 24px -16px rgba(54, 65, 39, 0.42);
+
+  color-scheme: light;
+  font-family: var(--heading-font);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 15% -5%, #eef5e6 0%, transparent 30%),
+    radial-gradient(circle at 90% 0%, #f1f7eb 0%, transparent 28%),
+    var(--background);
+  color: var(--text-primary);
+  line-height: 1.7;
+  letter-spacing: 0.01em;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+app-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+main {
+  flex: 1;
+  padding: 2rem;
+}
+
+/* Cards */
+.glass-card {
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 2rem;
+  box-shadow: var(--shadow-soft);
+}
+
+/* Forms */
+form {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+label {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+input,
+select {
+  width: 100%;
+  padding: 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+
+input::placeholder {
+  color: var(--text-muted);
+}
+
+input:focus,
+select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(107, 178, 82, 0.18);
+}
+
+input:hover,
+select:hover {
+  border-color: #d4e7c8;
+}
+
+/* Buttons */
+.btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 1rem;
+}
+
+.btn-primary {
+  background: var(--primary-color);
+  border: 1px solid transparent;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px -12px rgba(74, 143, 54, 0.45);
+}
+
+.btn-secondary {
+  background: #f3f8ed;
+  border: 1px solid #dce6cf;
+  color: var(--secondary-color);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #eaf4df;
+  color: var(--secondary-color);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Navbar */
+.navbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-color);
+  padding: 1rem 2rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+/* Footer */
+.footer {
+  background: var(--surface-light);
+  border-top: 1px solid var(--border-color);
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+/* Loading Spinner */
+.spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid var(--border-color);
+  border-radius: 50%;
+  border-top-color: var(--primary-color);
+  animation: spin 0.6s linear infinite;
+}
+
+/* Alerts */
+.alert {
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  border: 1px solid;
+}
+
+.alert-error {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.alert-success {
+  background: #eef7e6;
+  border-color: #d7eac4;
+  color: #2f5f1f;
+}
+
+.alert-warning {
+  background: #fff6e6;
+  border-color: #ffe1ae;
+  color: #9a5d12;
+}
+
+.error {
+  color: var(--danger-color);
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  main {
+    padding: 1rem;
+  }
+
+  .glass-card {
+    padding: 1.5rem;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}

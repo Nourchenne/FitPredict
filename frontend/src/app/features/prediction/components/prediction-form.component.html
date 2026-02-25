@@ -1,0 +1,212 @@
+<div class="form-container">
+  <div class="form-hero">
+    <div>
+      <h2>💪 Obesity Level Prediction - FitPredict</h2>
+      <p class="form-desc">Complete this smart health profile to get accurate, personalized recommendations.</p>
+    </div>
+
+    <div class="hero-stats">
+      <div class="stat-card">
+        <span class="stat-label">Predictions made</span>
+        <strong class="stat-value">{{ predictionCount }}</strong>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Form completion</span>
+        <strong class="stat-value">{{ completionPercent }}%</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="progress-wrap" aria-label="Form completion progress">
+    <div class="progress-bar" [style.width.%]="completionPercent"></div>
+  </div>
+  <p class="progress-meta">{{ completedFields }} of {{ totalFields }} fields ready</p>
+
+  <div *ngIf="error" class="alert alert-error">
+    <span>⚠️ {{ error }}</span>
+  </div>
+
+  <div *ngIf="success" class="alert alert-success">
+    <span>{{ success }}</span>
+  </div>
+
+  <div class="alert alert-warning" *ngIf="submitted && form.invalid">
+    <span>🧭 Please fix {{ invalidFieldCount }} highlighted field(s) to continue.</span>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" class="prediction-form" novalidate>
+    <section class="form-section">
+      <h3>👤 Profile</h3>
+      <div class="form-row">
+        <div class="form-group" [class.invalid]="isFieldInvalid('Gender')">
+          <label for="gender">Gender</label>
+          <select formControlName="Gender" id="gender">
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+          <small class="field-hint">Your biological sex</small>
+          <span class="error" *ngIf="getFieldError('Gender')">{{ getFieldError('Gender') }}</span>
+        </div>
+
+        <div class="form-group" [class.invalid]="isFieldInvalid('Age')">
+          <label for="age">Age (years)</label>
+          <input type="number" formControlName="Age" id="age" min="1" max="130" />
+          <small class="field-hint">Between 1 and 130 years</small>
+          <span class="error" *ngIf="getFieldError('Age')">{{ getFieldError('Age') }}</span>
+        </div>
+
+        <div class="form-group" [class.invalid]="isFieldInvalid('Height')">
+          <label for="height">Height (cm)</label>
+          <input type="number" formControlName="Height" id="height" min="50" max="250" />
+          <small class="field-hint">Your height in centimeters</small>
+          <span class="error" *ngIf="getFieldError('Height')">{{ getFieldError('Height') }}</span>
+        </div>
+
+        <div class="form-group" [class.invalid]="isFieldInvalid('Weight')">
+          <label for="weight">Weight (kg)</label>
+          <input type="number" formControlName="Weight" id="weight" min="20" max="500" />
+          <small class="field-hint">Your current weight</small>
+          <span class="error" *ngIf="getFieldError('Weight')">{{ getFieldError('Weight') }}</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="form-section">
+      <h3>🥗 Nutrition habits</h3>
+      <div class="form-row">
+        <div class="form-group" [class.invalid]="isFieldInvalid('family_history_with_overweight')">
+          <label for="family_history">Family history of overweight</label>
+          <select formControlName="family_history_with_overweight" id="family_history">
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+          <small class="field-hint">Is overweight present in your family?</small>
+          <span class="error" *ngIf="getFieldError('family_history_with_overweight')">{{ getFieldError('family_history_with_overweight') }}</span>
+        </div>
+
+        <div class="form-group" [class.invalid]="isFieldInvalid('FAVC')">
+          <label for="favc">Frequent high-calorie foods</label>
+          <select formControlName="FAVC" id="favc">
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+          <small class="field-hint">Do you often eat fast foods/sugary snacks?</small>
+          <span class="error" *ngIf="getFieldError('FAVC')">{{ getFieldError('FAVC') }}</span>
+        </div>
+
+        <div class="form-group" [class.invalid]="isFieldInvalid('FCVC')">
+          <label for="fcvc">Vegetable frequency</label>
+          <input type="number" step="0.1" formControlName="FCVC" id="fcvc" placeholder="0-5" min="0" max="5" />
+          <small class="field-hint">How often you include vegetables</small>
+          <span class="error" *ngIf="getFieldError('FCVC')">{{ getFieldError('FCVC') }}</span>
+        </div>
+
+        <div class="form-group" [class.invalid]="isFieldInvalid('NCP')">
+          <label for="ncp">Meals per day</label>
+          <input type="number" formControlName="NCP" id="ncp" placeholder="1-10" min="1" max="10" />
+          <small class="field-hint">Breakfast, lunch, dinner, etc.</small>
+          <span class="error" *ngIf="getFieldError('NCP')">{{ getFieldError('NCP') }}</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="form-section">
+      <h3>💧 Lifestyle</h3>
+      <div class="form-row">
+        <div class="form-group" [class.invalid]="isFieldInvalid('CAEC')">
+          <label for="caec">Snacks between meals</label>
+          <select formControlName="CAEC" id="caec">
+            <option value="No">No</option>
+            <option value="Sometimes">Sometimes</option>
+            <option value="Frequently">Frequently</option>
+            <option value="Always">Always</option>
+            <option value="Between">Between</option>
+          </select>
+          <small class="field-hint">Frequency of snacking</small>
+          <span class="error" *ngIf="getFieldError('CAEC')">{{ getFieldError('CAEC') }}</span>
+        </div>
+
+        <div class="form-group" [class.invalid]="isFieldInvalid('SMOKE')">
+          <label for="smoke">Do you smoke?</label>
+          <select formControlName="SMOKE" id="smoke">
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+          <small class="field-hint">Tobacco consumption</small>
+          <span class="error" *ngIf="getFieldError('SMOKE')">{{ getFieldError('SMOKE') }}</span>
+        </div>
+
+        <div class="form-group" [class.invalid]="isFieldInvalid('CH2O')">
+          <label for="ch2o">Water per day (liters)</label>
+          <input type="number" step="0.1" formControlName="CH2O" id="ch2o" placeholder="0-10" min="0" max="10" />
+          <small class="field-hint">Your average daily hydration</small>
+          <span class="error" *ngIf="getFieldError('CH2O')">{{ getFieldError('CH2O') }}</span>
+        </div>
+
+        <div class="form-group" [class.invalid]="isFieldInvalid('SCC')">
+          <label for="scc">Calorie counter</label>
+          <select formControlName="SCC" id="scc">
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+          <small class="field-hint">Do you monitor calorie intake?</small>
+          <span class="error" *ngIf="getFieldError('SCC')">{{ getFieldError('SCC') }}</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="form-section">
+      <h3>🏃 Activity & mobility</h3>
+      <div class="form-row">
+        <div class="form-group" [class.invalid]="isFieldInvalid('FAF')">
+          <label for="faf">Physical activity (h/week)</label>
+          <input type="number" step="0.1" formControlName="FAF" id="faf" min="0" max="16" />
+          <small class="field-hint">Sports, gym, walking, etc.</small>
+          <span class="error" *ngIf="getFieldError('FAF')">{{ getFieldError('FAF') }}</span>
+        </div>
+
+        <div class="form-group" [class.invalid]="isFieldInvalid('TUE')">
+          <label for="tue">Screen time (h/day)</label>
+          <input type="number" step="0.1" formControlName="TUE" id="tue" placeholder="0-24" min="0" max="24" />
+          <small class="field-hint">TV, phone, computer time</small>
+          <span class="error" *ngIf="getFieldError('TUE')">{{ getFieldError('TUE') }}</span>
+        </div>
+
+        <div class="form-group" [class.invalid]="isFieldInvalid('CALC')">
+          <label for="calc">Alcohol consumption</label>
+          <select formControlName="CALC" id="calc">
+            <option value="Never">Never</option>
+            <option value="Always">Always</option>
+            <option value="Frequently">Frequently</option>
+            <option value="Sometimes">Sometimes</option>
+          </select>
+          <small class="field-hint">How often you drink alcohol</small>
+          <span class="error" *ngIf="getFieldError('CALC')">{{ getFieldError('CALC') }}</span>
+        </div>
+
+        <div class="form-group" [class.invalid]="isFieldInvalid('MTRANS')">
+          <label for="mtrans">Usual transport mode</label>
+          <select formControlName="MTRANS" id="mtrans">
+            <option value="Public_Transportation">Public Transport</option>
+            <option value="Automobile">Car</option>
+            <option value="Bike">Bike</option>
+            <option value="Motorbike">Motorbike</option>
+            <option value="Walking">Walking</option>
+          </select>
+          <small class="field-hint">More active transport usually means more movement</small>
+          <span class="error" *ngIf="getFieldError('MTRANS')">{{ getFieldError('MTRANS') }}</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary" [disabled]="loading">
+        <span *ngIf="!loading">🚀 Predict Obesity Level</span>
+        <span *ngIf="loading">⏳ Processing...</span>
+      </button>
+      <button type="button" class="btn btn-secondary" (click)="reset()" [disabled]="loading">
+        🔄 Reset form
+      </button>
+    </div>
+  </form>
+</div>

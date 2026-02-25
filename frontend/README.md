@@ -1,16 +1,24 @@
-# React + Vite
+# Angular Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This frontend has been restructured to use Angular (standalone components) instead of React/Vite.
 
-Currently, two official plugins are available:
+## Project structure
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- `src/main.ts` bootstraps the Angular app.
+- `src/app/app.component.*` contains the root component scaffold.
+- `src/styles.css` holds global styles.
 
-## React Compiler
+## Development
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Install dependencies and run the dev server:
 
-## Expanding the ESLint configuration
+- `npm install`
+- `npm start`
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+The app will run on the default Angular dev server (usually `http://localhost:4200`).
+
+## Next steps
+
+- Create Angular components for the churn form and batch upload.
+- Add Angular services to call the FastAPI endpoints.
+- Port the existing React styles into Angular component styles or `src/styles.css`.

@@ -1,0 +1,54 @@
+<div *ngIf="result" class="result-container">
+  <h3>📊 Obesity Prediction Result</h3>
+
+  <div class="result-card">
+    <div class="probability-circle" [ngClass]="getProbabilityClass()">
+      <div class="percentage">{{ (result.probability * 100).toFixed(1) }}%</div>
+      <div class="label">Confidence</div>
+    </div>
+
+    <div class="result-info">
+      <div class="status-badge" [ngClass]="getStatusClass()">
+        {{ result.prediction_label }}
+      </div>
+
+      <p class="result-text">
+        <strong>Your Predicted Obesity Level:</strong><br/>
+        {{ result.prediction_label }}
+        <br/><br/>
+        <span *ngIf="getRecommendationIcon()" class="recommendation-icon">
+          {{ getRecommendationIcon() }}
+        </span>
+        <span class="recommendation-text">
+          {{ getRecommendationText() }}
+        </span>
+      </p>
+
+      <div class="risk-bars">
+        <div class="bar">
+          <div class="bar-label">Prediction Confidence</div>
+          <div class="bar-progress">
+            <div class="bar-fill" [style.width]="(result.probability * 100) + '%'"></div>
+          </div>
+          <div class="bar-value">{{ (result.probability * 100).toFixed(1) }}%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="recommendations">
+    <h4>💡 Personalized Recommendations</h4>
+    <ul>
+      <li *ngIf="isHighRisk()">👨‍⚕️ Consult a healthcare professional for personalized guidance</li>
+      <li *ngIf="isHighRisk()">🏃 Gradually increase your physical activity (aim for 150 min/week)</li>
+      <li *ngIf="isHighRisk()">🥦 Improve nutrition with more fruits, vegetables, and lean proteins</li>
+      <li *ngIf="isHighRisk()">📊 Track your progress regularly and celebrate small wins</li>
+      <li *ngIf="isHighRisk()">💧 Increase water intake to at least 8 glasses per day</li>
+      <li *ngIf="isHighRisk()">😴 Ensure 7-9 hours of quality sleep each night</li>
+      <li *ngIf="!isHighRisk()">✅ Excellent! Continue maintaining your healthy lifestyle</li>
+      <li *ngIf="!isHighRisk()">🏋️ Stay active with at least 150 minutes of exercise per week</li>
+      <li *ngIf="!isHighRisk()">🥗 Keep eating balanced, nutritious meals</li>
+      <li *ngIf="!isHighRisk()">🎯 Set health goals to further optimize your wellbeing</li>
+    </ul>
+  </div>
+</div>
