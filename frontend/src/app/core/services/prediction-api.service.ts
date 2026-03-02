@@ -31,6 +31,25 @@ export class PredictionApiService {
     );
   }
 
+  getPredictionHistory(userId: string): Observable<any[]> {
+    return this.http.get<any[]>(
+      this.api.getFullUrl(`/users/${userId}/predictions`)
+    ).pipe(catchError(this.handleError));
+  }
+
+  savePredictionHistory(userId: string, payload: { created_at: string; data: any }): Observable<any> {
+    return this.http.post<any>(
+      this.api.getFullUrl(`/users/${userId}/predictions`),
+      payload
+    ).pipe(catchError(this.handleError));
+  }
+
+  deletePredictionHistory(userId: string, recordId: number): Observable<any> {
+    return this.http.delete<any>(
+      this.api.getFullUrl(`/users/${userId}/predictions/${recordId}`)
+    ).pipe(catchError(this.handleError));
+  }
+
   private handleError(error: HttpErrorResponse) {
     console.error('API Error:', error);
     let errorMessage = 'Une erreur est survenue lors de la requête';

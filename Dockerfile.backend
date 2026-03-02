@@ -1,24 +1,22 @@
-# Use official Python lightweight image
-FROM python:3.9-slim
+FROM python:3.11-slim
 
-# Set working directory
 WORKDIR /app
 
-# Install system dependencies for some ML libraries
-RUN apt-get update && apt-get install -y \
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt
 
-# Copy the code and data
 COPY code/ ./code/
 COPY data/ ./data/
+COPY models/ ./models/
 
-# Expose the API port
 EXPOSE 8000
 
-# Command to run the application
-CMD ["python", "code/app.py"]
+CMD ["uvicorn", "code.app:app", "--host", "0.0.0.0", "--port", "8000"]

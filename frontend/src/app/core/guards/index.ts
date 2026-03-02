@@ -1,1 +1,1 @@
-// Guards placeholder
+export * from './auth.guard';

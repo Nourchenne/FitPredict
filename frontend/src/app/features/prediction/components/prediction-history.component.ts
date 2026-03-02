@@ -1,7 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { AuthService } from '../../../core/services/auth.service';
+import { PredictionApiService } from '../../../core/services/prediction-api.service';
 
 interface PredictionRecord {
+  id?: number;
   timestamp: string;
   data: any;
   index: number;
@@ -239,14 +242,35 @@ interface PredictionRecord {
 export class PredictionHistoryComponent implements OnInit {
   predictions: PredictionRecord[] = [];
 
-  constructor() {}
+  constructor(private authService: AuthService, private predictionApi: PredictionApiService) {}
 
   ngOnInit() {
     this.loadPredictions();
   }
 
   private loadPredictions() {
-    const stored = localStorage.getItem('predictions');
+    const user = this.authService.currentUser();
+    if (user) {
+      this.predictionApi.getPredictionHistory(user.id).subscribe({
+        next: (records) => {
+          this.predictions = records.map((p: any, index: number) => ({
+            id: p.id,
+            timestamp: p.created_at,
+            data: p.data,
+            index: index + 1
+          }));
+        },
+        error: () => this.loadLocalPredictions()
+      });
+      return;
+    }
+
+    this.loadLocalPredictions();
+  }
+
+  private loadLocalPredictions() {
+    const predictionsKey = this.authService.getUserScopedStorageKey('predictions');
+    const stored = localStorage.getItem(predictionsKey);
     if (stored) {
       const parsed = JSON.parse(stored);
       this.predictions = parsed.map((p: any, index: number) => ({
@@ -281,11 +305,28 @@ export class PredictionHistoryComponent implements OnInit {
   }
 
   deletePrediction(index: number) {
-    const predictions = JSON.parse(localStorage.getItem('predictions') || '[]');
+    const user = this.authService.currentUser();
+    const selected = this.predictions.find((p) => p.index === index);
+
+    if (user && selected?.id) {
+      this.predictionApi.deletePredictionHistory(user.id, selected.id).subscribe({
+        next: () => this.loadPredictions(),
+        error: () => this.deleteLocalPrediction(index)
+      });
+      return;
+    }
+
+    this.deleteLocalPrediction(index);
+  }
+
+  private deleteLocalPrediction(index: number) {
+    const predictionsKey = this.authService.getUserScopedStorageKey('predictions');
+    const countKey = this.authService.getUserScopedStorageKey('predictionCount');
+    const predictions = JSON.parse(localStorage.getItem(predictionsKey) || '[]');
     predictions.splice(predictions.length - index, 1);
-    localStorage.setItem('predictions', JSON.stringify(predictions));
+    localStorage.setItem(predictionsKey, JSON.stringify(predictions));
     const count = predictions.length;
-    localStorage.setItem('predictionCount', count.toString());
+    localStorage.setItem(countKey, count.toString());
     this.loadPredictions();
   }
 }

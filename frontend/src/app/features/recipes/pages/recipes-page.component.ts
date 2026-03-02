@@ -1,5 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
+import { AuthService } from '../../../core/services/auth.service';
+import { RecipeService } from '../../../core/services/recipe.service';
 
 interface Recipe {
   id: number;
@@ -18,12 +21,13 @@ interface Recipe {
 @Component({
   selector: 'app-recipes-page',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   template: `
     <div class="recipes-container">
       <div class="recipes-header">
         <h1>🍽️ Healthy Recipes - FitPredict</h1>
         <p>Delicious and nutritious recipes for your wellness</p>
+        <a routerLink="/favorites" class="favorites-link">❤️ View my favorites</a>
       </div>
 
       <div class="recipes-grid">
@@ -57,6 +61,7 @@ interface Recipe {
           <div class="recipe-meta">
             <span>⏱️ {{ recipe.prepTime }} min</span>
             <span>👥 Portions: 2</span>
+            <span class="likes">❤️ {{ getLikes(recipe.id) }} likes</span>
           </div>
 
           <p class="recipe-description">{{ recipe.description }}</p>
@@ -75,7 +80,9 @@ interface Recipe {
             </ol>
           </div>
 
-          <button class="btn-success" (click)="saveFavorite(recipe)">❤️ Add to favorites</button>
+          <button class="btn-success" [class.active]="isFavorite(recipe.id)" (click)="saveFavorite(recipe)">
+            {{ isFavorite(recipe.id) ? '💔 Remove from favorites' : '❤️ Add to favorites' }}
+          </button>
         </div>
       </div>
     </div>
@@ -106,6 +113,18 @@ interface Recipe {
       color: rgba(24, 33, 48, 0.72);
       font-size: 1rem;
       margin: 0;
+    }
+
+    .favorites-link {
+      margin-top: 0.85rem;
+      display: inline-flex;
+      text-decoration: none;
+      color: #1a2333;
+      font-weight: 700;
+      background: rgba(255, 255, 255, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      border-radius: 999px;
+      padding: 0.45rem 0.9rem;
     }
 
     .recipes-grid {
@@ -152,14 +171,9 @@ interface Recipe {
       white-space: nowrap;
     }
 
-    .diff-facile {
+    .diff-easy {
       background: #edf7e7;
       color: #2f5f1f;
-    }
-
-    .diff-moyen {
-      background: #fff3d2;
-      color: #7a4f16;
     }
 
     .nutrition-info {
@@ -193,12 +207,18 @@ interface Recipe {
 
     .recipe-meta {
       display: flex;
+      flex-wrap: wrap;
       gap: 1rem;
       margin-bottom: 1rem;
       padding-bottom: 1rem;
       border-bottom: 1px solid var(--border-color);
       font-size: 0.9rem;
       color: var(--text-secondary);
+    }
+
+    .likes {
+      font-weight: 700;
+      color: #b3261e;
     }
 
     .recipe-description {
@@ -251,6 +271,10 @@ interface Recipe {
       transform: translateY(-1px);
     }
 
+    .btn-success.active {
+      background: #991b1b;
+    }
+
     @media (max-width: 768px) {
       .recipes-grid {
         grid-template-columns: 1fr;
@@ -262,7 +286,20 @@ interface Recipe {
     }
   `]
 })
-export class RecipesPageComponent {
+export class RecipesPageComponent implements OnInit {
+  private readonly favoritesStorageKey: string;
+  private favoriteRecipeIds = new Set<number>();
+  likesMap: Record<number, number> = {};
+
+  constructor(private authService: AuthService, private recipeService: RecipeService) {
+    this.favoritesStorageKey = this.authService.getUserScopedStorageKey('favoriteRecipes');
+  }
+
+  ngOnInit(): void {
+    this.loadFavorites();
+    this.loadLikes();
+  }
+
   recipes: Recipe[] = [
     {
       id: 1,
@@ -274,24 +311,8 @@ export class RecipesPageComponent {
       difficulty: 'Easy',
       prepTime: 10,
       description: 'Complete protein salad packed with antioxidants. Quinoa provides all 9 amino acids making it perfect for muscle recovery!',
-      ingredients: [
-        '150g cooked quinoa (cooled)',
-        '1 cucumber (diced)',
-        '2 fresh tomatoes (chopped)',
-        '1/4 ripe avocado (sliced)',
-        '2 tbsp extra virgin olive oil',
-        '1 fresh lemon (juiced)',
-        'Sea salt and black pepper to taste',
-        'Optional: fresh cilantro or parsley'
-      ],
-      instructions: [
-        'Cook quinoa (1:2 ratio with water) for 15 minutes, then let cool',
-        'Finely dice cucumber and tomatoes while grains cool',
-        'In large bowl, combine cooled quinoa with vegetables',
-        'Whisk olive oil and lemon juice for dressing',
-        'Toss salad gently and season to taste',
-        'Add avocado just before serving to prevent browning'
-      ]
+      ingredients: ['150g cooked quinoa', '1 cucumber', '2 tomatoes', '1/4 avocado', '2 tbsp olive oil', '1 lemon juice'],
+      instructions: ['Cook quinoa and let cool', 'Dice vegetables', 'Mix everything', 'Season and serve']
     },
     {
       id: 2,
@@ -303,23 +324,8 @@ export class RecipesPageComponent {
       difficulty: 'Easy',
       prepTime: 20,
       description: 'High-protein grilled chicken with nutrient-dense vegetables. Excellent post-workout meal for muscle building!',
-      ingredients: [
-        '200g boneless chicken breast (6oz)',
-        '200g fresh broccoli florets',
-        '100g carrots (sliced)',
-        '2 teaspoons extra virgin olive oil',
-        '3 cloves garlic (minced)',
-        'Sea salt and black pepper',
-        'Fresh Herbs of Provence to taste'
-      ],
-      instructions: [
-        'Preheat oven to 200°C (400°F)',
-        'Season chicken thoroughly with herbs, salt, and pepper',
-        'Heat olive oil in pan, sear chicken 3 minutes per side for color',
-        'Arrange vegetables on baking sheet with chicken',
-        'Bake 20-25 minutes until chicken reaches 75°C internal temp',
-        'Drizzle with garlic-infused olive oil and serve hot'
-      ]
+      ingredients: ['200g chicken breast', 'broccoli', 'carrots', 'olive oil', 'garlic', 'herbs'],
+      instructions: ['Season chicken', 'Sear both sides', 'Bake with vegetables', 'Serve hot']
     },
     {
       id: 3,
@@ -331,23 +337,8 @@ export class RecipesPageComponent {
       difficulty: 'Easy',
       prepTime: 5,
       description: 'Antioxidant superpower breakfast loaded with superfoods and energy-boosting ingredients!',
-      ingredients: [
-        '100g premium acai puree (unsweetened)',
-        '100ml unsweetened almond milk',
-        '1 ripe banana',
-        '50g homemade granola mix',
-        '30g fresh blueberries',
-        '20g unsweetened coconut flakes',
-        '1 tablespoon raw honey'
-      ],
-      instructions: [
-        'Blend acai puree with almond milk until smooth consistency',
-        'Pour mixture into bowl and create a thick base',
-        'Arrange banana slices artistically on surface',
-        'Sprinkle granola, blueberries, and coconut',
-        'Drizzle generously with raw honey for natural sweetness',
-        'Serve immediately while acai is still frozen-solid'
-      ]
+      ingredients: ['acai puree', 'almond milk', 'banana', 'granola', 'blueberries', 'coconut'],
+      instructions: ['Blend acai base', 'Pour in bowl', 'Top with fruits and granola', 'Serve immediately']
     },
     {
       id: 4,
@@ -359,25 +350,8 @@ export class RecipesPageComponent {
       difficulty: 'Easy',
       prepTime: 15,
       description: 'Wholesome pasta loaded with vegetables and rich tomato flavor. Fiber-packed for sustained energy!',
-      ingredients: [
-        '150g whole wheat pasta (dry)',
-        '300g organic tomato sauce (low sodium)',
-        '1 medium onion (diced)',
-        '2 cloves fresh garlic (minced)',
-        '100g colorful bell peppers (assorted)',
-        '50g mushrooms (sliced)',
-        '30g grated parmesan cheese',
-        'Fresh basil (optional)'
-      ],
-      instructions: [
-        'Bring water to boil and cook pasta until al dente (10-12 min)',
-        'Meanwhile, sauté onion and garlic in olive oil for flavor base',
-        'Add bell peppers and mushrooms, cook 3-4 minutes',
-        'Stir in tomato sauce and simmer for 5 minutes',
-        'Drain pasta (reserve 1 cup pasta water)',
-        'Combine pasta with sauce, add pasta water if needed',
-        'Finish with fresh basil and parmesan cheese'
-      ]
+      ingredients: ['whole wheat pasta', 'tomato sauce', 'onion', 'garlic', 'peppers', 'mushrooms'],
+      instructions: ['Cook pasta al dente', 'Prepare vegetable sauce', 'Combine and finish with basil']
     },
     {
       id: 5,
@@ -389,23 +363,8 @@ export class RecipesPageComponent {
       difficulty: 'Easy',
       prepTime: 8,
       description: 'Classic high-protein breakfast that takes 8 minutes. Perfect for quick morning nutrition!',
-      ingredients: [
-        '2 large organic free-range eggs',
-        '1 slice whole grain bread',
-        '100g fresh baby spinach',
-        '1 medium tomato',
-        '1 teaspoon extra virgin olive oil',
-        'Sea salt and cracked black pepper',
-        'Optional: fresh herbs (oregano, chives)'
-      ],
-      instructions: [
-        'Heat olive oil in non-stick skillet over medium heat',
-        'Add spinach and tomato, sauté for 2-3 minutes until wilted',
-        'Carefully crack both eggs into the pan with vegetables',
-        'Cook on medium heat for 4-5 minutes until whites set completely',
-        'Toast bread while eggs cook for structural support',
-        'Slide everything onto toast, season generously, and serve hot'
-      ]
+      ingredients: ['2 eggs', 'whole grain bread', 'spinach', 'tomato', 'olive oil'],
+      instructions: ['Sauté veggies', 'Cook eggs', 'Toast bread', 'Assemble and serve']
     },
     {
       id: 6,
@@ -417,27 +376,197 @@ export class RecipesPageComponent {
       difficulty: 'Easy',
       prepTime: 3,
       description: 'Nutrient-dense green smoothie packed with vitamins and minerals for energy and detoxification!',
-      ingredients: [
-        '200ml unsweetened almond milk',
-        '150g fresh green spinach (packed)',
-        '1 ripe banana',
-        '1/2 Granny Smith green apple (cored)',
-        '1 tablespoon premium spirulina powder',
-        '1 tablespoon raw honey (natural sweetener)',
-        '8-10 ice cubes (for thickness)'
-      ],
-      instructions: [
-        'Add almond milk and spinach to blender first',
-        'Blend 30 seconds to break down spinach fibers',
-        'Add banana, apple, spirulina, and honey',
-        'Blend at high speed for 2 minutes until completely smooth',
-        'Add ice cubes and blend for additional 30 seconds',
-        'Serve immediately in chilled glass for best taste'
-      ]
+      ingredients: ['almond milk', 'spinach', 'banana', 'green apple', 'spirulina', 'honey'],
+      instructions: ['Blend greens first', 'Add fruits and spirulina', 'Blend smooth and serve chilled']
+    },
+    {
+      id: 7,
+      name: 'Salmon Avocado Bowl',
+      calories: 430,
+      protein: 34,
+      carbs: 22,
+      fat: 22,
+      difficulty: 'Easy',
+      prepTime: 18,
+      description: 'Omega-3 rich bowl perfect for heart health and satiety with balanced macros.',
+      ingredients: ['salmon fillet', 'avocado', 'brown rice', 'cucumber', 'sesame seeds', 'lemon'],
+      instructions: ['Cook rice', 'Sear salmon', 'Prepare toppings', 'Assemble bowl and serve']
+    },
+    {
+      id: 8,
+      name: 'Turkey Wrap Power',
+      calories: 360,
+      protein: 30,
+      carbs: 32,
+      fat: 12,
+      difficulty: 'Easy',
+      prepTime: 12,
+      description: 'A quick high-protein wrap ideal for lunch with crunchy veggies and yogurt sauce.',
+      ingredients: ['whole wheat tortilla', 'turkey slices', 'yogurt sauce', 'lettuce', 'tomato', 'onion'],
+      instructions: ['Warm tortilla', 'Add sauce and filling', 'Wrap tightly', 'Slice and enjoy']
+    },
+    {
+      id: 9,
+      name: 'Overnight Oats Deluxe',
+      calories: 310,
+      protein: 14,
+      carbs: 42,
+      fat: 9,
+      difficulty: 'Easy',
+      prepTime: 6,
+      description: 'Creamy breakfast prep loaded with fiber and stable energy for the morning.',
+      ingredients: ['rolled oats', 'milk', 'chia seeds', 'cinnamon', 'berries', 'honey'],
+      instructions: ['Mix ingredients in jar', 'Refrigerate overnight', 'Add berries and serve']
+    },
+    {
+      id: 10,
+      name: 'Mediterranean Chickpea Bowl',
+      calories: 390,
+      protein: 17,
+      carbs: 44,
+      fat: 14,
+      difficulty: 'Easy',
+      prepTime: 14,
+      description: 'Fiber-rich vegetarian bowl with chickpeas, crisp vegetables, and lemon-herb dressing.',
+      ingredients: ['chickpeas', 'cucumber', 'tomato', 'red onion', 'olive oil', 'lemon juice', 'parsley'],
+      instructions: ['Rinse chickpeas', 'Chop vegetables', 'Prepare dressing', 'Mix and serve chilled']
+    },
+    {
+      id: 11,
+      name: 'Tuna Sweet Potato Plate',
+      calories: 410,
+      protein: 33,
+      carbs: 38,
+      fat: 13,
+      difficulty: 'Easy',
+      prepTime: 20,
+      description: 'Balanced plate with lean tuna protein and complex carbs from roasted sweet potatoes.',
+      ingredients: ['tuna steak', 'sweet potato', 'green beans', 'olive oil', 'pepper', 'garlic powder'],
+      instructions: ['Roast sweet potato cubes', 'Sear tuna', 'Steam green beans', 'Plate with seasoning']
+    },
+    {
+      id: 12,
+      name: 'Lentil Protein Soup',
+      calories: 330,
+      protein: 20,
+      carbs: 42,
+      fat: 8,
+      difficulty: 'Easy',
+      prepTime: 25,
+      description: 'Comforting lentil soup high in protein and minerals, perfect for recovery dinners.',
+      ingredients: ['red lentils', 'carrot', 'celery', 'onion', 'tomato paste', 'vegetable broth'],
+      instructions: ['Sauté aromatics', 'Add lentils and broth', 'Simmer 20 minutes', 'Blend lightly and serve']
+    },
+    {
+      id: 13,
+      name: 'Greek Yogurt Berry Parfait',
+      calories: 260,
+      protein: 19,
+      carbs: 28,
+      fat: 7,
+      difficulty: 'Easy',
+      prepTime: 6,
+      description: 'High-protein snack layered with fresh berries and crunchy seeds for satiety.',
+      ingredients: ['greek yogurt', 'strawberries', 'blueberries', 'chia seeds', 'pumpkin seeds', 'honey'],
+      instructions: ['Layer yogurt and fruits', 'Add seeds between layers', 'Finish with a little honey']
+    },
+    {
+      id: 14,
+      name: 'Shrimp Veggie Stir-Fry',
+      calories: 370,
+      protein: 31,
+      carbs: 30,
+      fat: 12,
+      difficulty: 'Easy',
+      prepTime: 16,
+      description: 'Fast stir-fry with shrimp and colorful veggies for a light but filling dinner.',
+      ingredients: ['shrimp', 'broccoli', 'bell peppers', 'zucchini', 'soy sauce', 'ginger', 'garlic'],
+      instructions: ['Sauté shrimp quickly', 'Cook vegetables on high heat', 'Add sauce', 'Serve immediately']
     }
   ];
 
-  saveFavorite(recipe: Recipe) {
-    alert(`${recipe.name} added to favorites! \u2764️`);
+  async saveFavorite(recipe: Recipe): Promise<void> {
+    const user = this.authService.currentUser();
+    const favorites = this.readFavorites();
+    const existing = favorites.find((item: Recipe) => item.id === recipe.id);
+
+    if (existing) {
+      const updated = favorites.filter((item: Recipe) => item.id !== recipe.id);
+      this.persistFavorites(updated);
+      this.likesMap[recipe.id] = Math.max((this.likesMap[recipe.id] || 1) - 1, 0);
+
+      if (user) {
+        try {
+          await this.recipeService.removeFavorite(user.id, recipe.id);
+          await this.loadLikes();
+        } catch {
+          // fallback already persisted locally
+        }
+      }
+
+      alert(`${recipe.name} removed from favorites.`);
+      return;
+    }
+
+    const updated = [recipe, ...favorites];
+    this.persistFavorites(updated);
+    this.likesMap[recipe.id] = (this.likesMap[recipe.id] || 0) + 1;
+
+    if (user) {
+      try {
+        await this.recipeService.addFavorite(user.id, {
+          recipe_id: recipe.id,
+          recipe
+        });
+        await this.loadLikes();
+      } catch {
+        // fallback already persisted locally
+      }
+    }
+
+    alert(`${recipe.name} added to favorites! ❤️`);
+  }
+
+  isFavorite(recipeId: number): boolean {
+    return this.favoriteRecipeIds.has(recipeId);
+  }
+
+  getLikes(recipeId: number): number {
+    return this.likesMap[recipeId] || 0;
+  }
+
+  private async loadFavorites(): Promise<void> {
+    const user = this.authService.currentUser();
+    if (user) {
+      try {
+        const apiFavorites = await this.recipeService.getFavorites(user.id);
+        this.favoriteRecipeIds = new Set(apiFavorites.map((item: Recipe) => item.id));
+        localStorage.setItem(this.favoritesStorageKey, JSON.stringify(apiFavorites));
+        return;
+      } catch {
+        // fallback to local
+      }
+    }
+
+    const favorites = this.readFavorites();
+    this.favoriteRecipeIds = new Set(favorites.map((item: Recipe) => item.id));
+  }
+
+  private async loadLikes(): Promise<void> {
+    try {
+      this.likesMap = await this.recipeService.getLikesMap();
+    } catch {
+      this.likesMap = {};
+    }
+  }
+
+  private readFavorites(): Recipe[] {
+    const raw = localStorage.getItem(this.favoritesStorageKey);
+    return raw ? JSON.parse(raw) : [];
+  }
+
+  private persistFavorites(favorites: Recipe[]): void {
+    localStorage.setItem(this.favoritesStorageKey, JSON.stringify(favorites));
+    this.favoriteRecipeIds = new Set(favorites.map((item) => item.id));
   }
 }

@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { LanguageService } from '../../../core/services/language.service';
+import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-navbar',
@@ -12,22 +13,12 @@ import { LanguageService } from '../../../core/services/language.service';
       <div class="navbar-container">
         <div class="navbar-brand">
           <a routerLink="/" class="brand-link" aria-label="Go to home page">
-            <span class="brand-emoji">🏠</span>
-            <span class="brand-text">FitPredict</span>
+            <img src="assets/branding/fitpredict-logo.png" alt="FitPredict logo" class="brand-logo" />
           </a>
         </div>
 
         <ul class="nav-links">
-          <li>
-            <a 
-              routerLink="/" 
-              routerLinkActive="active"
-              [routerLinkActiveOptions]="{ exact: true }"
-              class="nav-link">
-              {{ languageService.t('nav.home') }}
-            </a>
-          </li>
-          <li>
+          <li *ngIf="authService.isAuthenticated()">
             <a 
               routerLink="/prediction" 
               routerLinkActive="active"
@@ -36,7 +27,8 @@ import { LanguageService } from '../../../core/services/language.service';
               {{ languageService.t('nav.prediction') }}
             </a>
           </li>
-          <li>
+
+          <li *ngIf="authService.isAuthenticated()">
             <a 
               routerLink="/workouts" 
               routerLinkActive="active"
@@ -45,7 +37,8 @@ import { LanguageService } from '../../../core/services/language.service';
               {{ languageService.t('nav.workouts') }}
             </a>
           </li>
-          <li>
+
+          <li *ngIf="authService.isAuthenticated()">
             <a 
               routerLink="/recipes" 
               routerLinkActive="active"
@@ -54,7 +47,28 @@ import { LanguageService } from '../../../core/services/language.service';
               {{ languageService.t('nav.recipes') }}
             </a>
           </li>
+
+          <li *ngIf="authService.isAuthenticated()">
+            <a
+              routerLink="/favorites"
+              routerLinkActive="active"
+              [routerLinkActiveOptions]="{ exact: true }"
+              class="nav-link">
+              ❤️ Favorites
+            </a>
+          </li>
         </ul>
+
+        <div class="auth-actions">
+          <a *ngIf="!authService.isAuthenticated()" routerLink="/auth" class="auth-link">
+            🔐 Login / Register
+          </a>
+
+          <div *ngIf="authService.isAuthenticated()" class="user-box">
+            <span>👋 {{ authService.currentUser()?.name }}</span>
+            <button type="button" (click)="logout()">Logout</button>
+          </div>
+        </div>
       </div>
     </nav>
   `,
@@ -99,8 +113,11 @@ import { LanguageService } from '../../../core/services/language.service';
       opacity: 0.9;
     }
 
-    .brand-emoji {
-      font-size: 1.5rem;
+    .brand-logo {
+      width: 172px;
+      height: 62px;
+      object-fit: contain;
+      display: block;
     }
 
     .nav-links {
@@ -140,6 +157,40 @@ import { LanguageService } from '../../../core/services/language.service';
       min-width: max-content;
     }
 
+    .auth-actions {
+      min-width: max-content;
+      display: flex;
+      align-items: center;
+    }
+
+    .auth-link {
+      text-decoration: none;
+      color: #1f2e42;
+      font-weight: 600;
+      background: #eef4e5;
+      border: 1px solid #d7e6c8;
+      border-radius: 999px;
+      padding: 0.45rem 0.8rem;
+    }
+
+    .user-box {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.9rem;
+      color: var(--text-primary);
+    }
+
+    .user-box button {
+      border: 1px solid #f7c3c3;
+      background: #fee2e2;
+      color: #991b1b;
+      border-radius: 999px;
+      padding: 0.35rem 0.7rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
     .language-dropdown {
       padding: 0.5rem 1rem;
       background: var(--surface-light);
@@ -175,6 +226,11 @@ import { LanguageService } from '../../../core/services/language.service';
         flex: none;
       }
 
+      .auth-actions {
+        width: 100%;
+        justify-content: center;
+      }
+
       .nav-link {
         padding: 0.5rem 0.75rem;
         font-size: 0.9rem;
@@ -183,5 +239,9 @@ import { LanguageService } from '../../../core/services/language.service';
   `]
 })
 export class NavbarComponent {
-  constructor(public languageService: LanguageService) {}
+  constructor(public languageService: LanguageService, public authService: AuthService) {}
+
+  logout(): void {
+    this.authService.logout();
+  }
 }

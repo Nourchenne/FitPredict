@@ -3,7 +3,24 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Frontend</title>
+    <title>FitPredict</title>
+    <link id="app-favicon" rel="icon" type="image/png" href="/assets/branding/logo.png?v=5" />
+    <link id="app-shortcut-favicon" rel="shortcut icon" type="image/png" href="/assets/branding/logo.png?v=5" />
+    <link id="app-touch-icon" rel="apple-touch-icon" href="/assets/branding/logo.png?v=5" />
+    <script>
+      (function forceFreshFavicon() {
+        const version = Date.now().toString();
+        const href = `/assets/branding/logo.png?v=${version}`;
+
+        const icon = document.getElementById('app-favicon');
+        const shortcut = document.getElementById('app-shortcut-favicon');
+        const touch = document.getElementById('app-touch-icon');
+
+        if (icon) icon.setAttribute('href', href);
+        if (shortcut) shortcut.setAttribute('href', href);
+        if (touch) touch.setAttribute('href', href);
+      })();
+    </script>
     <base href="/" />
   </head>
   <body>

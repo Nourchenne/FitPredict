@@ -1,10 +1,9 @@
-version: '3.8'
-
 services:
   backend:
     build:
       context: .
       dockerfile: Dockerfile.backend
+    container_name: fitpredict_backend
     ports:
       - "8000:8000"
     environment:
@@ -12,12 +11,19 @@ services:
       - MLFLOW_TRACKING_URI=http://mlflow:5000
     volumes:
       - ./data:/app/data
+      - ./models:/app/models
     depends_on:
       - mlflow
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
 
   mlflow:
     image: ghcr.io/mlflow/mlflow
-    container_name: mlflow_server
+    container_name: fitpredict_mlflow
     ports:
       - "5000:5000"
     environment:
@@ -32,7 +38,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
+    container_name: fitpredict_frontend
     ports:
-      - "5173:80"
+      - "4200:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy

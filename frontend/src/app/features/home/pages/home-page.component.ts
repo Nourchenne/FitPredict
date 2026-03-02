@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-home-page',
@@ -15,12 +16,23 @@ import { RouterLink } from '@angular/router';
             your <strong>Doorstep</strong>
           </h1>
           <p class="subtitle">
-            Predict obesity risk, get personalized recommendations, and improve your routine with workouts and recipes.
+            FitPredict helps you estimate obesity level, track your progress over time, complete workout sessions, and save favorite healthy recipes.
+          </p>
+
+          <p class="public-note" *ngIf="!authService.isAuthenticated()">
+            🌍 This page is public for everyone. Create an account or login to start using prediction, workouts, history, and favorites.
           </p>
 
           <div class="cta-row">
-            <a routerLink="/prediction" class="cta cta-primary">Start assessment</a>
-            <a routerLink="/workouts" class="cta cta-dark">View plans</a>
+            <a *ngIf="authService.isAuthenticated(); else authCallToAction" routerLink="/prediction" class="cta cta-primary">Start assessment</a>
+            <ng-template #authCallToAction>
+              <a routerLink="/auth" class="cta cta-primary">Create account / Login</a>
+            </ng-template>
+
+            <a *ngIf="authService.isAuthenticated(); else discoverApp" routerLink="/workouts" class="cta cta-dark">View plans</a>
+            <ng-template #discoverApp>
+              <a routerLink="/auth" class="cta cta-dark">Unlock all features</a>
+            </ng-template>
           </div>
 
           <div class="stats-row">
@@ -121,6 +133,14 @@ import { RouterLink } from '@angular/router';
       max-width: 640px;
       color: rgba(24, 33, 48, 0.68);
       font-size: 1.05rem;
+    }
+
+    .public-note {
+      margin: 0.9rem 0 0;
+      max-width: 700px;
+      color: rgba(24, 33, 48, 0.84);
+      font-size: 0.95rem;
+      font-weight: 600;
     }
 
     .cta-row {
@@ -271,4 +291,6 @@ import { RouterLink } from '@angular/router';
     }
   `]
 })
-export class HomePageComponent {}
+export class HomePageComponent {
+  constructor(public authService: AuthService) {}
+}

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { PredictionApiService } from '../../../core/services/prediction-api.service';
 import { LanguageService } from '../../../core/services/language.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { PredictionRequest, PredictionResponse } from '../../../core/models';
 
 @Component({
@@ -28,7 +29,12 @@ export class PredictionFormComponent {
     'FAF', 'TUE', 'CALC', 'MTRANS'
   ];
 
-  constructor(private fb: FormBuilder, private api: PredictionApiService, public languageService: LanguageService) {
+  constructor(
+    private fb: FormBuilder,
+    private api: PredictionApiService,
+    public languageService: LanguageService,
+    private authService: AuthService
+  ) {
     this.form = this.fb.group({
       Gender: ['Male', Validators.required],
       Age: [30, [Validators.required, Validators.min(1), Validators.max(130)]],
@@ -51,19 +57,35 @@ export class PredictionFormComponent {
   }
 
   private loadPredictionCount() {
-    const stored = localStorage.getItem('predictionCount');
+    const countKey = this.authService.getUserScopedStorageKey('predictionCount');
+    const stored = localStorage.getItem(countKey);
     this.predictionCount = stored ? parseInt(stored, 10) : 0;
   }
 
   private savePredictionCount() {
     this.predictionCount++;
-    localStorage.setItem('predictionCount', this.predictionCount.toString());
-    const predictions = JSON.parse(localStorage.getItem('predictions') || '[]');
+    const countKey = this.authService.getUserScopedStorageKey('predictionCount');
+    const predictionsKey = this.authService.getUserScopedStorageKey('predictions');
+
+    localStorage.setItem(countKey, this.predictionCount.toString());
+    const predictions = JSON.parse(localStorage.getItem(predictionsKey) || '[]');
     predictions.push({
       timestamp: new Date().toISOString(),
       data: this.form.value
     });
-    localStorage.setItem('predictions', JSON.stringify(predictions));
+    localStorage.setItem(predictionsKey, JSON.stringify(predictions));
+
+    const user = this.authService.currentUser();
+    if (user) {
+      this.api.savePredictionHistory(user.id, {
+        created_at: new Date().toISOString(),
+        data: this.form.value
+      }).subscribe({
+        error: () => {
+          // Keep UX smooth even if API persistence fails
+        }
+      });
+    }
   }
 
   onSubmit() {
