@@ -10,6 +10,7 @@ export class LanguageService {
     'nav.prediction': '🎯 Prediction',
     'nav.workouts': '💪 Workouts',
     'nav.recipes': '🍽️ Recipes',
+    'nav.chatbot': '🤖 FitChat',
     
     'form.title': '💪 Obesity Level Prediction - FitPredict',
     'form.description': 'Fill this simple form to discover your personalized health recommendations',

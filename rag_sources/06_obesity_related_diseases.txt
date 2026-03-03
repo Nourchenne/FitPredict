@@ -1,0 +1,27 @@
+TITLE: Diseases Related to Obesity
+
+1. Type 2 Diabetes
+Cause: Insulin resistance
+Prevention: Weight loss, exercise
+
+2. Hypertension
+High blood pressure due to excess fat tissue.
+
+3. Cardiovascular Disease
+Blocked arteries due to cholesterol.
+
+4. Sleep Apnea
+Breathing interruption during sleep.
+
+5. Fatty Liver Disease
+Fat accumulation in liver cells.
+
+6. Osteoarthritis
+Joint damage from excess weight.
+
+7. Metabolic Syndrome
+Cluster:
+- High blood pressure
+- High blood sugar
+- Abdominal fat
+- Abnormal cholesterol

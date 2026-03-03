@@ -6,6 +6,7 @@ import { WorkoutsPageComponent } from './features/workouts/pages/workouts-page.c
 import { RecipesPageComponent } from './features/recipes/pages/recipes-page.component';
 import { FavoritesPageComponent } from './features/recipes/pages/favorites-page.component';
 import { AuthPageComponent } from './features/auth/pages/auth-page.component';
+import { ChatbotPageComponent } from './features/chatbot/pages/chatbot-page.component';
 import { authGuard } from './core/guards';
 
 export const routes: Routes = [
@@ -19,6 +20,7 @@ export const routes: Routes = [
       { path: 'workouts', component: WorkoutsPageComponent, canActivate: [authGuard] },
       { path: 'recipes', component: RecipesPageComponent, canActivate: [authGuard] },
       { path: 'favorites', component: FavoritesPageComponent, canActivate: [authGuard] },
+      { path: 'chatbot', component: ChatbotPageComponent, canActivate: [authGuard] },
       { path: '**', redirectTo: '' }
     ]
   }

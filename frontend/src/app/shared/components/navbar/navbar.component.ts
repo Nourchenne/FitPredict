@@ -57,6 +57,16 @@ import { AuthService } from '../../../core/services/auth.service';
               ❤️ Favorites
             </a>
           </li>
+
+          <li *ngIf="authService.isAuthenticated()">
+            <a
+              routerLink="/chatbot"
+              routerLinkActive="active"
+              [routerLinkActiveOptions]="{ exact: true }"
+              class="nav-link">
+              {{ languageService.t('nav.chatbot') }}
+            </a>
+          </li>
         </ul>
 
         <div class="auth-actions">
