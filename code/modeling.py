@@ -33,6 +33,15 @@ MODELS_DIR = "models"
 BEST_MODEL_PATH = os.path.join(MODELS_DIR, f"best_model_{TIMESTAMP}.pkl")
 
 
+def configure_mlflow_tracking():
+    tracking_uri = os.getenv("MLFLOW_TRACKING_URI")
+    if tracking_uri:
+        mlflow.set_tracking_uri(tracking_uri)
+        print(f"🔗 MLflow tracking URI: {tracking_uri}")
+    else:
+        print("ℹ️ MLFLOW_TRACKING_URI not set. Using local MLflow store.")
+
+
 def prepare_data(file_path=RAW_PATH):
     df = pd.read_csv(file_path)
 
@@ -178,8 +187,13 @@ def run_experiment(model_name, model, param_grid, use_smote=True):
         cm_path = plot_confusion_matrix(y_test, y_pred, class_names, model_name)
         mlflow.log_artifact(cm_path)
 
-        # Log model
+        # Log model (MLflow format)
         mlflow.sklearn.log_model(best_model, "model")
+
+        # Log explicit serialized model artifact for easy visibility in run artifacts
+        serialized_model_path = os.path.join(ARTIFACT_DIR, f"03_model_{model_name}.pkl")
+        joblib.dump(best_model, serialized_model_path)
+        mlflow.log_artifact(serialized_model_path)
 
         print(f"\n[{model_name}] Best Params: {best_params}")
         print(f"[{model_name}] Accuracy: {acc:.4f} | F1_macro: {f1m:.4f}")
@@ -188,6 +202,8 @@ def run_experiment(model_name, model, param_grid, use_smote=True):
 
 
 if __name__ == "__main__":
+    configure_mlflow_tracking()
+
     models_config = {
         "RandomForest_SMOTE": {
             "model": RandomForestClassifier(random_state=42),
@@ -262,7 +278,18 @@ if __name__ == "__main__":
     results_df.to_csv(comparison_file, index=False, encoding='utf-8')
     
     # Create comparison plot
-    plot_models_comparison(results_df)
+    comparison_plot_path = plot_models_comparison(results_df)
+
+    # Log comparison summary in MLflow (single run with global comparison artifacts)
+    mlflow.set_experiment(EXPERIMENT_NAME)
+    with mlflow.start_run(run_name="Models_Comparison_Summary"):
+        mlflow.log_artifact(comparison_file)
+        mlflow.log_artifact(comparison_plot_path)
+        if best_overall_model is not None:
+            mlflow.log_metric("best_f1_macro", float(best_overall_f1))
+            top_row = results_df.iloc[0]
+            mlflow.log_param("best_model_name", str(top_row['Model']))
+            mlflow.log_metric("best_accuracy", float(top_row['Accuracy']))
     
     # Print summary
     print("\n" + "="*70)

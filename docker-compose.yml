@@ -31,12 +31,12 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - MLFLOW_BACKEND_STORE_URI=sqlite:///mlflow.db
+      - MLFLOW_BACKEND_STORE_URI=sqlite:////app/artifacts/mlflow.db
       - MLFLOW_DEFAULT_ARTIFACT_ROOT=/app/artifacts
     volumes:
       - ./mlruns:/app/artifacts
     command: >
-      mlflow server  --backend-store-uri sqlite:///mlflow.db  --default-artifact-root /app/artifacts  --host 0.0.0.0
+      mlflow server --backend-store-uri sqlite:////app/artifacts/mlflow.db --default-artifact-root /app/artifacts --host 0.0.0.0
 
   ollama:
     image: ollama/ollama:latest
